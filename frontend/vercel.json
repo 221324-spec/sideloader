@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://sideloader-jd1n.onrender.com/api/$1"
+    }
+  ]
+}

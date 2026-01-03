@@ -13,13 +13,13 @@ function Products({ sidebarCollapsed = false }) {
 
   const { data: products, isLoading, error } = useQuery({
     queryKey: ['products'],
-    queryFn: () => fetch('http://localhost:5000/api/products', {
+    queryFn: () => fetch('/api/products', {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
     }).then(res => res.json()).then(data => data.value || data), // Handle both array and { value: [...] } format
   });
 
   const addProductMutation = useMutation({
-    mutationFn: (newProduct) => fetch('http://localhost:5000/api/products', {
+    mutationFn: (newProduct) => fetch('/api/products', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -47,7 +47,7 @@ function Products({ sidebarCollapsed = false }) {
   });
 
   const updateProductMutation = useMutation({
-    mutationFn: ({ id, data }) => fetch(`http://localhost:5000/api/products/${id}`, {
+    mutationFn: ({ id, data }) => fetch(`/api/products/${id}`, {
       method: 'PUT',
       headers: { 
         'Content-Type': 'application/json',
@@ -64,7 +64,7 @@ function Products({ sidebarCollapsed = false }) {
   });
 
   const deleteProductMutation = useMutation({
-    mutationFn: (id) => fetch(`http://localhost:5000/api/products/${id}`, {
+    mutationFn: (id) => fetch(`/api/products/${id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
     }).then(res => res.json()),

@@ -18,7 +18,7 @@ function Transporters({ sidebarCollapsed = false }) {
   const { data: transporters = [], isLoading } = useQuery({
     queryKey: ['transporters'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:5000/api/transporters');
+      const res = await fetch('/api/transporters');
       if (!res.ok) throw new Error('Failed to fetch transporters');
       const data = await res.json();
       const transportersArray = data.value || data; 
@@ -34,7 +34,7 @@ function Transporters({ sidebarCollapsed = false }) {
   const { data: availableCargo = [] } = useQuery({
     queryKey: ['available-cargo'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:5000/api/products', {
+      const res = await fetch('/api/products', {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (!res.ok) throw new Error('Failed to fetch cargo');
@@ -69,7 +69,7 @@ function Transporters({ sidebarCollapsed = false }) {
     (async () => {
       try {
         console.log('Fetching transporter for contract resolution...');
-        const res = await fetch(`http://localhost:5000/api/transporters/${transporterId}`);
+        const res = await fetch(`/api/transporters/${transporterId}`);
         if (!res.ok) throw new Error('Failed to fetch transporter for contract resolution');
         const data = await res.json();
         console.log('Fetched transporter for contract resolution:', data);
@@ -91,7 +91,7 @@ function Transporters({ sidebarCollapsed = false }) {
   const createTransporterMutation = useMutation({
     mutationFn: async (data) => {
       console.log('Creating transporter with data:', data);
-      const res = await fetch('http://localhost:5000/api/transporters', {
+      const res = await fetch('/api/transporters', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -118,7 +118,7 @@ function Transporters({ sidebarCollapsed = false }) {
   
   const updateTransporterMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      const res = await fetch(`http://localhost:5000/api/transporters/${id}`, {
+      const res = await fetch(`/api/transporters/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -136,7 +136,7 @@ function Transporters({ sidebarCollapsed = false }) {
   
   const deleteTransporterMutation = useMutation({
     mutationFn: async (id) => {
-      const res = await fetch(`http://localhost:5000/api/transporters/${id}`, {
+      const res = await fetch(`/api/transporters/${id}`, {
         method: 'DELETE'
       });
       if (!res.ok) throw new Error('Failed to delete transporter');
@@ -151,7 +151,7 @@ function Transporters({ sidebarCollapsed = false }) {
   const createContractMutation = useMutation({
     mutationFn: async ({ transporterId, contractData }) => {
       console.log('Creating contract for transporter:', transporterId, 'with data:', contractData);
-      const res = await fetch(`http://localhost:5000/api/transporters/${transporterId}/contracts`, {
+      const res = await fetch(`/api/transporters/${transporterId}/contracts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(contractData)
@@ -181,7 +181,7 @@ function Transporters({ sidebarCollapsed = false }) {
   const updateContractMutation = useMutation({
     mutationFn: async ({ transporterId, contractId, status, performance }) => {
       console.log('Updating contract:', contractId, 'for transporter:', transporterId, 'status:', status);
-      const res = await fetch(`http://localhost:5000/api/transporters/${transporterId}/contracts/${contractId}`, {
+      const res = await fetch(`/api/transporters/${transporterId}/contracts/${contractId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, performance })

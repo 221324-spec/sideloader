@@ -17,7 +17,7 @@ function Staff() {
   const { data: staffData = { value: [] }, isLoading, error: fetchError } = useQuery({
     queryKey: ['staff'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:5000/api/auth/staff', {
+      const response = await fetch('/api/auth/staff', {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (!response.ok) throw new Error('Failed to fetch staff');
@@ -31,7 +31,7 @@ function Staff() {
 
   const addStaffMutation = useMutation({
     mutationFn: async (newStaff) => {
-      const response = await fetch('http://localhost:5000/api/auth/register', {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newStaff)
@@ -58,7 +58,7 @@ function Staff() {
 
   const toggleBlockMutation = useMutation({
     mutationFn: async ({ id, isBlocked }) => {
-      const response = await fetch(`http://localhost:5000/api/auth/staff/${id}/block`, {
+      const response = await fetch(`/api/auth/staff/${id}/block`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -82,7 +82,7 @@ function Staff() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
-      const response = await fetch(`http://localhost:5000/api/auth/staff/${id}`, {
+      const response = await fetch(`/api/auth/staff/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

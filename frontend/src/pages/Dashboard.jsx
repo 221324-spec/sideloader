@@ -130,7 +130,7 @@ function Dashboard({ businessMode = 'b2c', sidebarCollapsed = false }) {
   const { data: invoiceStats } = useQuery({
     queryKey: ['invoice-stats', businessMode],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:5000/api/invoices/stats/summary?businessMode=${businessMode}`);
+      const res = await fetch(`/api/invoices/stats/summary?businessMode=${businessMode}`);
       if (!res.ok) throw new Error('Failed to fetch invoice stats');
       return res.json();
     },
@@ -141,7 +141,7 @@ function Dashboard({ businessMode = 'b2c', sidebarCollapsed = false }) {
   const { data: allInvoices } = useQuery({
     queryKey: ['invoices', businessMode],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:5000/api/invoices?businessMode=${businessMode}`);
+      const res = await fetch(`/api/invoices?businessMode=${businessMode}`);
       if (!res.ok) throw new Error('Failed to fetch invoices');
       return res.json();
     },
@@ -152,7 +152,7 @@ function Dashboard({ businessMode = 'b2c', sidebarCollapsed = false }) {
   const { data: vehicleStats } = useQuery({
     queryKey: ['vehicle-stats'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:5000/api/vehicles/stats/summary');
+      const res = await fetch('/api/vehicles/stats/summary');
       if (!res.ok) throw new Error('Failed to fetch vehicle stats');
       return res.json();
     }
@@ -162,7 +162,7 @@ function Dashboard({ businessMode = 'b2c', sidebarCollapsed = false }) {
     queryKey: ['customers'],
     queryFn: async () => {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/customers', {
+      const res = await fetch('/api/customers', {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (!res.ok) throw new Error('Failed to fetch customers');
@@ -177,7 +177,7 @@ function Dashboard({ businessMode = 'b2c', sidebarCollapsed = false }) {
     queryKey: ['products'],
     queryFn: async () => {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/products', {
+      const res = await fetch('/api/products', {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (!res.ok) throw new Error('Failed to fetch products');
@@ -191,7 +191,7 @@ function Dashboard({ businessMode = 'b2c', sidebarCollapsed = false }) {
   const { data: transporterStats } = useQuery({
     queryKey: ['transporter-stats'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:5000/api/transporters/stats/summary');
+      const res = await fetch('/api/transporters/stats/summary');
       if (!res.ok) throw new Error('Failed to fetch transporter stats');
       return res.json();
     }

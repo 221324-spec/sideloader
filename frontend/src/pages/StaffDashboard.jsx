@@ -21,7 +21,7 @@ function StaffDashboard({ businessMode, sidebarCollapsed = false }) {
   const { data: customersData } = useQuery({
     queryKey: ['customers'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:5000/api/customers', {
+      const response = await fetch('/api/customers', {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (!response.ok) throw new Error('Failed to fetch customers');
@@ -34,7 +34,7 @@ function StaffDashboard({ businessMode, sidebarCollapsed = false }) {
   const { data: invoicesData } = useQuery({
     queryKey: ['invoices'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:5000/api/invoices', {
+      const response = await fetch('/api/invoices', {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (!response.ok) throw new Error('Failed to fetch invoices');
@@ -47,7 +47,7 @@ function StaffDashboard({ businessMode, sidebarCollapsed = false }) {
   const { data: vehiclesData } = useQuery({
     queryKey: ['vehicles'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:5000/api/vehicles', {
+      const response = await fetch('/api/vehicles', {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (!response.ok) throw new Error('Failed to fetch vehicles');
@@ -60,7 +60,7 @@ function StaffDashboard({ businessMode, sidebarCollapsed = false }) {
   const { data: transportersData } = useQuery({
     queryKey: ['transporters'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:5000/api/transporters', {
+      const response = await fetch('/api/transporters', {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (!response.ok) throw new Error('Failed to fetch transporters');

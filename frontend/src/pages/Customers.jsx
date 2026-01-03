@@ -30,7 +30,7 @@ function Customers({ sidebarCollapsed = false }) {
       if (!token) {
         throw new Error('No authentication token found. Please login first.');
       }
-      return fetch('http://localhost:5000/api/customers', {
+      return fetch('/api/customers', {
         headers: { 'Authorization': `Bearer ${token}` }
       }).then(res => {
         if (!res.ok) {
@@ -49,7 +49,7 @@ function Customers({ sidebarCollapsed = false }) {
   });
 
   const addCustomerMutation = useMutation({
-    mutationFn: (newCustomer) => fetch('http://localhost:5000/api/customers', {
+    mutationFn: (newCustomer) => fetch('/api/customers', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -74,7 +74,7 @@ function Customers({ sidebarCollapsed = false }) {
   });
 
   const updateCustomerMutation = useMutation({
-    mutationFn: ({ id, data }) => fetch(`http://localhost:5000/api/customers/${id}`, {
+    mutationFn: ({ id, data }) => fetch(`/api/customers/${id}`, {
       method: 'PUT',
       headers: { 
         'Content-Type': 'application/json',
@@ -99,7 +99,7 @@ function Customers({ sidebarCollapsed = false }) {
   });
 
   const deleteCustomerMutation = useMutation({
-    mutationFn: (id) => fetch(`http://localhost:5000/api/customers/${id}`, {
+    mutationFn: (id) => fetch(`/api/customers/${id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
     }).then(res => res.json()),

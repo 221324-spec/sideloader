@@ -16,7 +16,7 @@ function Vehicles({ sidebarCollapsed = false }) {
   const { data: vehicles = [], isLoading } = useQuery({
     queryKey: ['vehicles'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:5000/api/vehicles');
+      const res = await fetch('/api/vehicles');
       if (!res.ok) throw new Error('Failed to fetch vehicles');
       const data = await res.json();
       return data.value || data; 
@@ -27,7 +27,7 @@ function Vehicles({ sidebarCollapsed = false }) {
   const { data: availableCargo = [] } = useQuery({
     queryKey: ['available-cargo'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:5000/api/products', {
+      const res = await fetch('/api/products', {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (!res.ok) throw new Error('Failed to fetch cargo');
@@ -40,7 +40,7 @@ function Vehicles({ sidebarCollapsed = false }) {
   
   const createVehicleMutation = useMutation({
     mutationFn: async (data) => {
-      const res = await fetch('http://localhost:5000/api/vehicles', {
+      const res = await fetch('/api/vehicles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -58,7 +58,7 @@ function Vehicles({ sidebarCollapsed = false }) {
   
   const updateVehicleMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      const res = await fetch(`http://localhost:5000/api/vehicles/${id}`, {
+      const res = await fetch(`/api/vehicles/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -76,7 +76,7 @@ function Vehicles({ sidebarCollapsed = false }) {
   
   const deleteVehicleMutation = useMutation({
     mutationFn: async (id) => {
-      const res = await fetch(`http://localhost:5000/api/vehicles/${id}`, {
+      const res = await fetch(`/api/vehicles/${id}`, {
         method: 'DELETE'
       });
       if (!res.ok) throw new Error('Failed to delete vehicle');
@@ -90,7 +90,7 @@ function Vehicles({ sidebarCollapsed = false }) {
   
   const assignCargoMutation = useMutation({
     mutationFn: async ({ vehicleId, cargoId }) => {
-      const res = await fetch(`http://localhost:5000/api/vehicles/${vehicleId}/assign-cargo`, {
+      const res = await fetch(`/api/vehicles/${vehicleId}/assign-cargo`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cargoId })
@@ -108,7 +108,7 @@ function Vehicles({ sidebarCollapsed = false }) {
   
   const unassignCargoMutation = useMutation({
     mutationFn: async (vehicleId) => {
-      const res = await fetch(`http://localhost:5000/api/vehicles/${vehicleId}/unassign-cargo`, {
+      const res = await fetch(`/api/vehicles/${vehicleId}/unassign-cargo`, {
         method: 'POST'
       });
       if (!res.ok) throw new Error('Failed to unassign cargo');
