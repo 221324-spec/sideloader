@@ -1,0 +1,196 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== GLOBAL LAYOUT ===== */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  /* allow vertical scrolling and prevent unwanted horizontal page overflow */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Main content area - takes full available space */
+.main-content-layout {
+  position: relative;
+  min-height: calc(100vh - 5rem);
+  height: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Ensure content fits within viewport minus sidebar */
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding-right: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .main-content-layout {
+    padding-right: 1.5rem;
+  }
+}
+
+/* ===== UTILITY CLASSES ===== */
+
+/* Full-width page wrapper */
+.full-width-page {
+  width: 100%;
+  padding: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .full-width-page {
+    padding: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .full-width-page {
+    padding: 2rem 2.5rem;
+  }
+}
+
+/* Content section with proper spacing */
+.content-section {
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+/* Flex header for page titles */
+.flex-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .flex-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+/* Responsive table wrapper */
+.responsive-table {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Settings/Profile centered layout - with max width for readability */
+.centered-content {
+  width: 100%;
+  max-width: 56rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 1.5rem;
+}
+
+@media (min-width: 1280px) {
+  .centered-content {
+    max-width: 64rem;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+    background: white !important;
+  }
+  
+  /* Reset all elements */
+  * {
+    background: white !important;
+    background-color: white !important;
+    background-image: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Hide everything by default */
+  body,
+  html,
+  #root,
+  main {
+    background: white !important;
+    background-color: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+  
+  /* Hide main page content */
+  .no-print {
+    display: none !important;
+    visibility: hidden !important;
+    position: absolute !important;
+    left: -9999px !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+  }
+
+  /* Hide global navigation/header elements */
+  header,
+  nav,
+  aside,
+  .app-header,
+  .sidebar,
+  .topbar {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  
+  /* Show modal content centered for print */
+  .print-modal-container {
+    display: block !important;
+    position: static !important;
+    background: white !important;
+    background-color: white !important;
+    background-image: none !important;
+    overflow: visible !important;
+    height: auto !important;
+    padding: 0 !important;
+    width: 100% !important;
+    z-index: 9999 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    page-break-after: avoid !important;
+  }
+  
+  .print-modal-container > div {
+    background: white !important;
+    background-color: white !important;
+    background-image: none !important;
+  }
+  
+  /* Hide buttons */
+  .print-hide {
+    display: none !important;
+  }
+
+  /* Override text colors for print */
+  .print-modal-container,
+  .print-modal-container * {
+    color: black !important;
+    background-color: white !important;
+    background: white !important;
+    border-color: black !important;
+  }
+}

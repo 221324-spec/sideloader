@@ -1,0 +1,158 @@
+
+
+/* ===== LAYOUT SYSTEM ===== */
+
+.sidebar-transition {
+  transition: width 0.3s ease-in-out;
+}
+
+.main-content-with-sidebar {
+  margin-left: 16rem; 
+  margin-top: 5rem; 
+}
+
+/* Main content area - fills available space */
+.page-container {
+  width: 100%;
+  min-height: calc(100vh - 6rem);
+  padding: 1.5rem 2rem;
+}
+
+/* Page content wrapper - full width with consistent padding */
+.page-content {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Page header styling */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+}
+
+/* Card grid layouts */
+.card-grid {
+  display: grid;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.card-grid-2 {
+  grid-template-columns: repeat(1, 1fr);
+}
+
+.card-grid-3 {
+  grid-template-columns: repeat(1, 1fr);
+}
+
+.card-grid-4 {
+  grid-template-columns: repeat(1, 1fr);
+}
+
+@media (min-width: 640px) {
+  .card-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .card-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .card-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .card-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .card-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Table container - full width with horizontal scroll */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 0.75rem;
+}
+
+/* Form container */
+.form-container {
+  width: 100%;
+  max-width: 100%;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Form grid */
+.form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(1, 1fr);
+}
+
+@media (min-width: 768px) {
+  .form-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .form-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ===== PRINT STYLES ===== */
+
+@media print {
+  
+  .print-hide {
+    display: none !important;
+  }
+
+  
+  .print-show {
+    display: block !important;
+  }
+
+  
+  .print-modal-container {
+    position: static !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    overflow: visible !important;
+  }
+
+  
+  .print-modal-container > div {
+    max-width: 100% !important;
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+  }
+
+  
+  html, body {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
