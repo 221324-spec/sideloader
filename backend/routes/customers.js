@@ -51,7 +51,7 @@ router.post('/', auth, authorize('admin', 'staff'), async (req, res) => {
 });
 
 // Update customer
-router.put('/:id', auth, authorize('admin'), async (req, res) => {
+router.put('/:id', auth, authorize('admin', 'staff'), async (req, res) => {
   try {
     const customerRef = doc(req.db, 'customers', req.params.id);
     const updateData = { ...req.body, updatedAt: new Date() };
@@ -65,7 +65,7 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
 });
 
 // Delete customer
-router.delete('/:id', auth, authorize('admin'), async (req, res) => {
+router.delete('/:id', auth, authorize('admin', 'staff'), async (req, res) => {
   try {
     const customerRef = doc(req.db, 'customers', req.params.id);
     await deleteDoc(customerRef);
