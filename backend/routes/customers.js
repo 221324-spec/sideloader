@@ -54,6 +54,13 @@ router.post('/', auth, authorize('admin', 'staff'), async (req, res) => {
 router.put('/:id', auth, authorize('admin', 'staff'), async (req, res) => {
   try {
     const customerRef = doc(req.db, 'customers', req.params.id);
+    
+    // Check if document exists first
+    const customerDoc = await getDoc(customerRef);
+    if (!customerDoc.exists()) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+    
     const updateData = { ...req.body, updatedAt: new Date() };
     await updateDoc(customerRef, updateData);
     const updatedCustomer = { id: req.params.id, ...updateData };

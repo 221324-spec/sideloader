@@ -63,6 +63,12 @@ router.post('/', async (req, res) => {
 router.put('/:id', auth, async (req, res) => {
   try {
     const cargoRef = doc(req.db, 'cargo', req.params.id);
+    
+    // Check if document exists first
+    const cargoDoc = await getDoc(cargoRef);
+    if (!cargoDoc.exists()) {
+      return res.status(404).json({ message: 'Cargo not found' });
+    }
 
     const parsedQuantity = Number(req.body.quantity ?? 0);
     const parsedPrice = Number(req.body.defaultPrice ?? req.body.price ?? 0);
