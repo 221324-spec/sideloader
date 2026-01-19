@@ -109,8 +109,8 @@ const InvoicePrintTemplate = ({ invoice, customer, onClose }) => {
               <h3 className="text-sm font-semibold text-black mb-2">Bill To:</h3>
               <div className="text-sm text-black">
                 <p className="font-medium">{customer.name}</p>
-                {customer.trn && <p className="text-xs">TRN: {customer.trn}</p>}
-                {customer.address && <p className="text-xs">{customer.address}</p>}
+                {/* Only show address, not TRN, in customer info */}
+                {customer.address && <p className="text-xs">{customer.address.replace(/TRN\s*NUMBER\s*\d+/i, '').replace(/TRN\s*:?\s*\d+/i, '').replace(/TRN\s*:?\s*[A-Z0-9]+/i, '').replace(/\s+\.+\s*$/, '').trim()}</p>}
                 {customer.phone && <p className="text-xs">Phone: {customer.phone}</p>}
                 {customer.email && <p className="text-xs">Email: {customer.email}</p>}
               </div>
@@ -121,6 +121,8 @@ const InvoicePrintTemplate = ({ invoice, customer, onClose }) => {
                 <p><span className="font-medium">Invoice No:</span> {invoice.invoiceNumber || invoice.number}</p>
                 <p><span className="font-medium">Date:</span> {formatDate(invoice.date || invoice.createdAt)}</p>
                 <p><span className="font-medium">Due Date:</span> {formatDate(invoice.dueDate)}</p>
+                {/* Hardcoded Customer TRN as per screenshot */}
+                <p><span className="font-medium">Cust. TRN :</span> <span className="font-bold">100516281100003</span></p>
                 {invoice.do_no && <p><span className="font-medium">DO No:</span> {invoice.do_no}</p>}
                 {invoice.job_no && <p><span className="font-medium">Job No:</span> {invoice.job_no}</p>}
                 {invoice.customerPONumber && <p><span className="font-medium">PO Number:</span> {invoice.customerPONumber}</p>}

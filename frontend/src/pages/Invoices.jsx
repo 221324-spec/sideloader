@@ -915,14 +915,16 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
                   <p className="text-sm">Invoice #: {invoiceDetail.invoiceNumber || invoiceDetail.number}</p>
                   <p className="text-sm">Date: {formatDate(invoiceDetail.date || invoiceDetail.createdAt)}</p>
                   <p className="text-sm">Due: {formatDate(invoiceDetail.dueDate)}</p>
+                  {/* Hardcoded Cust. TRN under date fields */}
+                  <p className="text-sm"><span className="font-medium">Cust. TRN :</span> <span className="font-bold">100516281100003</span></p>
                   {invoiceDetail.do_no && <p className="text-sm">DO: {invoiceDetail.do_no}</p>}
                   {invoiceDetail.job_no && <p className="text-sm">Job: {invoiceDetail.job_no}</p>}
                 </div>
                 <div>
                   <h4 className="text-lg font-semibold mb-2">Customer</h4>
                   <p className="text-sm">Name: {invoiceDetail.customer?.name || 'N/A'}</p>
-                  <p className="text-sm">TRN: {invoiceDetail.customer?.trn || 'N/A'}</p>
-                  <p className="text-sm">Address: {invoiceDetail.customer?.address || 'N/A'}</p>
+                  {/* Only show address, not TRN, in customer info */}
+                  <p className="text-sm">Address: {invoiceDetail.customer?.address?.replace(/TRN\s*NUMBER\s*\d+/i, '').replace(/TRN\s*:?\s*\d+/i, '').replace(/TRN\s*:?\s*[A-Z0-9]+/i, '').replace(/\s+\.+\s*$/, '').trim() || 'N/A'}</p>
                 </div>
               </div>
 
