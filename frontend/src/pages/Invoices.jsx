@@ -599,6 +599,17 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
                     />
                     {errors.customerName && <p className="mt-1 text-sm text-red-600">{errors.customerName.message}</p>}
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Customer TRN</label>
+                    <input
+                      {...register('customerTRN')}
+                      type="text"
+                      placeholder="Enter TRN number"
+                      className={`w-full px-3 py-2 rounded-lg border ${
+                        isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                    />
+                  </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium mb-2">Customer Address</label>
                     <textarea
@@ -905,8 +916,9 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
                   <p className="text-sm">Invoice #: {invoiceDetail.invoiceNumber || invoiceDetail.number}</p>
                   <p className="text-sm">Date: {formatDate(invoiceDetail.date || invoiceDetail.createdAt)}</p>
                   <p className="text-sm">Due: {formatDate(invoiceDetail.dueDate)}</p>
-                  {/* Hardcoded Cust. TRN under date fields */}
-                  <p className="text-sm"><span className="font-medium">Cust. TRN :</span> <span className="font-bold">100516281100003</span></p>
+                  {invoiceDetail.customerTRN && (
+                    <p className="text-sm"><span className="font-medium">Cust. TRN :</span> <span className="font-bold">{invoiceDetail.customerTRN}</span></p>
+                  )}
                   {invoiceDetail.do_no && <p className="text-sm">DO: {invoiceDetail.do_no}</p>}
                   {invoiceDetail.job_no && <p className="text-sm">Job: {invoiceDetail.job_no}</p>}
                 </div>
