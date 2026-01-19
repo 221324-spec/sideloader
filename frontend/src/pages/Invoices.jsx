@@ -599,16 +599,6 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
                     />
                     {errors.customerName && <p className="mt-1 text-sm text-red-600">{errors.customerName.message}</p>}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Customer TRN</label>
-                    <input
-                      {...register('customerTRN')}
-                      type="text"
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                    />
-                  </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium mb-2">Customer Address</label>
                     <textarea

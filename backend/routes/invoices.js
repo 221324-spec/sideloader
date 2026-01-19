@@ -383,11 +383,11 @@ router.post('/', async (req, res) => {
         address: entity.address
       };
     } else if (businessMode === 'b2b') {
-      // New B2B schema uses inline customer info instead of transporter
+      // New B2B schema uses inline customer info only
       entity = {
-        name: customerName || customer?.name || '',
-        trn: customerTRN || customer?.trn || '',
-        address: customerAddress || customer?.address || ''
+        name: customerName || '',
+        trn: '', // always blank, hardcoded in frontend only
+        address: customerAddress || ''
       };
     } else {
       return res.status(400).json({ message: 'Invalid business mode or entity ID' });
