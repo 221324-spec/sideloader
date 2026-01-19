@@ -121,8 +121,9 @@ const InvoicePrintTemplate = ({ invoice, customer, onClose }) => {
                 <p><span className="font-medium">Invoice No:</span> {invoice.invoiceNumber || invoice.number}</p>
                 <p><span className="font-medium">Date:</span> {formatDate(invoice.date || invoice.createdAt)}</p>
                 <p><span className="font-medium">Due Date:</span> {formatDate(invoice.dueDate)}</p>
-                {/* Hardcoded Customer TRN as per screenshot */}
-                <p><span className="font-medium">Cust. TRN :</span> <span className="font-bold">100516281100003</span></p>
+                {(invoice.customerTRN || customer.trn || invoice.customer?.trn) && (
+                  <p><span className="font-medium">Cust. TRN :</span> <span className="font-bold">{invoice.customerTRN || customer.trn || invoice.customer?.trn}</span></p>
+                )}
                 {invoice.do_no && <p><span className="font-medium">DO No:</span> {invoice.do_no}</p>}
                 {invoice.job_no && <p><span className="font-medium">Job No:</span> {invoice.job_no}</p>}
                 {invoice.customerPONumber && <p><span className="font-medium">PO Number:</span> {invoice.customerPONumber}</p>}

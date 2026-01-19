@@ -43,9 +43,16 @@ function B2CInvoiceForm({ customers = [], onSubmit, onCancel, initialData }) {
   }, [watch]);
 
   const submit = (data) => {
+    // Find selected customer
+    const selectedCustomer = customers.find(c => c.id === data.customerId);
     const payload = {
       ...data,
       businessMode: 'b2c',
+      customerName: selectedCustomer?.name || '',
+      customerAddress: selectedCustomer?.address || '',
+      customerTRN: selectedCustomer?.trn || '',
+      customerPhone: selectedCustomer?.phone || '',
+      customerEmail: selectedCustomer?.email || '',
       items: data.items.map(item => ({
         workDate: item.workDate,
         description: item.description,

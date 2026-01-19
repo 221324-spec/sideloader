@@ -188,6 +188,14 @@ function Customers({ sidebarCollapsed = false }) {
               />
               {errors.phone && <p className="text-red-500 text-sm">{errors.phone.message}</p>}
             </div>
+            <div>
+              <label className={`block text-sm font-medium transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>TRN</label>
+              <input
+                {...register('trn')}
+                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-300 ${isDarkMode ? 'border-gray-600 bg-gray-700 text-gray-200 placeholder-gray-400' : 'border-gray-300'}`}
+                placeholder="Enter TRN number"
+              />
+            </div>
             <div className="md:col-span-2">
               <label className={`block text-sm font-medium transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Address</label>
               <textarea
@@ -246,6 +254,10 @@ function Customers({ sidebarCollapsed = false }) {
                       <span className="font-medium w-20">Phone:</span>
                       <span>{selectedCustomer.phone || 'Not provided'}</span>
                     </div>
+                    <div className={`flex items-center transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <span className="font-medium w-20">TRN:</span>
+                      <span>{selectedCustomer.trn || 'Not provided'}</span>
+                    </div>
                     <div className={`flex items-start transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                       <span className="font-medium w-20">Address:</span>
                       <span>{selectedCustomer.address || 'Not provided'}</span>
@@ -285,6 +297,7 @@ function Customers({ sidebarCollapsed = false }) {
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Name</th>
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Email</th>
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Phone</th>
+                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>TRN</th>
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Address</th>
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Actions</th>
                 </tr>
@@ -295,6 +308,7 @@ function Customers({ sidebarCollapsed = false }) {
                     <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium transition-colors duration-300 ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{customer.name}</td>
                     <td className={`px-6 py-4 whitespace-nowrap text-sm transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{customer.email}</td>
                     <td className={`px-6 py-4 whitespace-nowrap text-sm transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{customer.phone}</td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{customer.trn || 'Not provided'}</td>
                     <td className={`px-6 py-4 whitespace-nowrap text-sm transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{customer.address}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">

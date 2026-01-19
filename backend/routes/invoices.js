@@ -288,17 +288,28 @@ router.get('/:id', async (req, res) => {
       }
     }
 
-    // Populate customer data for B2C invoices
+    // Populate customer data for B2C invoices and ensure TRN, date, dueDate are present
     if (invoiceData.customerId) {
       try {
         const customerRef = doc(req.db, 'customers', invoiceData.customerId);
         const customerDoc = await getDoc(customerRef);
         if (customerDoc.exists()) {
-          invoiceData.customer = { id: customerDoc.id, ...customerDoc.data() };
+          const customerData = customerDoc.data();
+          invoiceData.customer = { id: customerDoc.id, ...customerData };
+          // Ensure TRN, date, dueDate are present in top-level invoiceData for frontend
+          invoiceData.customerTRN = customerData.trn || '';
+          invoiceData.customerName = customerData.name || '';
+          invoiceData.customerAddress = customerData.address || '';
         }
       } catch (customerErr) {
         console.error('Error fetching customer:', customerErr);
       }
+    }
+    // For B2B, ensure customerTRN, customerName, customerAddress are present
+    if (invoiceData.businessMode === 'b2b') {
+      invoiceData.customerTRN = invoiceData.customerTRN || invoiceData.customer?.trn || '';
+      invoiceData.customerName = invoiceData.customerName || invoiceData.customer?.name || '';
+      invoiceData.customerAddress = invoiceData.customerAddress || invoiceData.customer?.address || '';
     }
 
     res.json(invoiceData);
@@ -386,7 +397,7 @@ router.post('/', async (req, res) => {
       // New B2B schema uses inline customer info only
       entity = {
         name: customerName || '',
-        trn: '', // always blank, hardcoded in frontend only
+        trn: (typeof customerTRN !== 'undefined' ? customerTRN : ''),
         address: customerAddress || ''
       };
     } else {
@@ -483,13 +494,19 @@ router.post('/', async (req, res) => {
         customer: entity,
         customerPONumber: customerPONumber || '',
         paymentTerms: paymentTerms || 'cash',
-        vatPercentage: parseFloat(vatPercentage) || 5
+        vatPercentage: parseFloat(vatPercentage) || 5,
+        customerTRN: entity.trn || '',
+        customerName: entity.name || '',
+        customerAddress: entity.address || ''
       } : {
-        customer: entity,
+        customer: { ...entity, trn: entity.trn },
         do_no: do_no || '',
         job_no: job_no || '',
         payment_terms: payment_terms || '',
-        date: invoiceDate
+        date: invoiceDate,
+        customerTRN: entity.trn,
+        customerName: entity.name || '',
+        customerAddress: entity.address || ''
       }),
       items: invoiceItems,
       subtotal: Math.round(subtotal * 100) / 100,

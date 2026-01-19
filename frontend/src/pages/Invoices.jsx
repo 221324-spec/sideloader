@@ -314,7 +314,8 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
     if (selectedInvoice?.id === id) setSelectedInvoice(null);
   };
 
-  const invoiceDetail = fullInvoiceQuery.data || selectedInvoice;
+  // Always prefer fullInvoiceQuery.data for latest info
+  const invoiceDetail = fullInvoiceQuery.data && Object.keys(fullInvoiceQuery.data).length > 0 ? fullInvoiceQuery.data : selectedInvoice;
   const invoicesEmpty = !invoicesLoading && invoices.length === 0;
 
   // Auto-print when enabled
@@ -916,17 +917,14 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
                   <p className="text-sm">Invoice #: {invoiceDetail.invoiceNumber || invoiceDetail.number}</p>
                   <p className="text-sm">Date: {formatDate(invoiceDetail.date || invoiceDetail.createdAt)}</p>
                   <p className="text-sm">Due: {formatDate(invoiceDetail.dueDate)}</p>
-                  {invoiceDetail.customerTRN && (
-                    <p className="text-sm"><span className="font-medium">Cust. TRN :</span> <span className="font-bold">{invoiceDetail.customerTRN}</span></p>
-                  )}
                   {invoiceDetail.do_no && <p className="text-sm">DO: {invoiceDetail.do_no}</p>}
                   {invoiceDetail.job_no && <p className="text-sm">Job: {invoiceDetail.job_no}</p>}
                 </div>
                 <div>
                   <h4 className="text-lg font-semibold mb-2">Customer</h4>
-                  <p className="text-sm">Name: {invoiceDetail.customer?.name || 'N/A'}</p>
-                  {/* Only show address, not TRN, in customer info */}
-                  <p className="text-sm">Address: {invoiceDetail.customer?.address?.replace(/TRN\s*NUMBER\s*\d+/i, '').replace(/TRN\s*:?\s*\d+/i, '').replace(/TRN\s*:?\s*[A-Z0-9]+/i, '').replace(/\s+\.+\s*$/, '').trim() || 'N/A'}</p>
+                  <p className="text-sm">Name: {invoiceDetail.customerName || invoiceDetail.customer?.name || 'N/A'}</p>
+                  <p className="text-sm"><span className="font-medium">TRN:</span> <span className="font-bold">{invoiceDetail.customerTRN !== undefined ? invoiceDetail.customerTRN : (invoiceDetail.customer?.trn !== undefined ? invoiceDetail.customer?.trn : '')}</span></p>
+                  <p className="text-sm">Address: {invoiceDetail.customerAddress || invoiceDetail.customer?.address?.replace(/TRN\s*NUMBER\s*\d+/i, '').replace(/TRN\s*:?\s*\d+/i, '').replace(/TRN\s*:?\s*[A-Z0-9]+/i, '').replace(/\s+\.+\s*$/, '').trim() || 'N/A'}</p>
                 </div>
               </div>
 
