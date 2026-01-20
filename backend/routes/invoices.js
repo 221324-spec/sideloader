@@ -1,5 +1,5 @@
 const express = require('express');
-const { collection, doc, getDoc, setDoc, getDocs, query, where, orderBy, limit, updateDoc, deleteDoc } = require('firebase/firestore');
+const { collection, doc, getDoc, setDoc, getDocs, query, where, orderBy, limit, updateDoc, deleteDoc, runTransaction } = require('firebase/firestore');
 
 const router = express.Router();
 
@@ -63,12 +63,46 @@ const calculateInvoiceTotals = (items, taxRate = 0) => {
 };
 
 // Generate unique invoice number
-const generateInvoiceNumber = () => {
+const generateInvoiceNumber = async (db) => {
   const date = new Date();
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  return `INV-${year}${month}-${random}`;
+
+  // Use a counter document to atomically generate a sequential number
+  const counterRef = doc(db, 'counters', 'invoices');
+  try {
+    const seq = await runTransaction(db, async (tx) => {
+      const snap = await tx.get(counterRef);
+      if (!snap.exists()) {
+        tx.set(counterRef, { seq: 1 });
+        return 1;
+      }
+      const current = snap.data().seq || 0;
+      const next = Number(current) + 1;
+      tx.update(counterRef, { seq: next });
+      return next;
+    });
+
+    const seqStr = String(seq).padStart(4, '0');
+    return `INV-${year}${month}-${seqStr}`;
+  } catch (err) {
+    // Fallback to previous approach if transaction fails: find latest invoice
+    console.error('generateInvoiceNumber transaction failed, falling back', err);
+    const invoicesRef = collection(db, 'invoices');
+    const q = query(invoicesRef, orderBy('createdAt', 'desc'), limit(1));
+    const snapshot = await getDocs(q);
+    let nextSeq = 1;
+    if (!snapshot.empty) {
+      const lastInvoice = snapshot.docs[0].data();
+      if (lastInvoice && lastInvoice.invoiceNumber) {
+        const parts = lastInvoice.invoiceNumber.split('-');
+        const parsed = parseInt(parts[2], 10);
+        if (!isNaN(parsed)) nextSeq = parsed + 1;
+      }
+    }
+    const seqStr = nextSeq.toString().padStart(4, '0');
+    return `INV-${year}${month}-${seqStr}`;
+  }
 };
 
 // Get all invoices
@@ -480,13 +514,10 @@ router.post('/', async (req, res) => {
       grandTotal = totals.grandTotal;
     }
 
-    const invoiceNumber = generateInvoiceNumber();
-
     const invoiceDate = date ? new Date(date) : new Date();
 
+    // Build base invoice data (number/sequence will be set inside transaction)
     const invoiceData = {
-      invoiceNumber,
-      number: invoiceNumber, // match new schema naming
       invoiceType: businessMode === 'b2b' ? 'B2B' : 'B2C',
       businessMode: businessMode || 'b2c',
       ...(businessMode === 'b2c' ? {
@@ -526,16 +557,121 @@ router.post('/', async (req, res) => {
       updatedAt: new Date()
     };
 
-    const invoiceRef = doc(collection(req.db, 'invoices'));
-    await setDoc(invoiceRef, invoiceData);
+    // Create invoice atomically with counter increment to avoid gaps
+    try {
+      let createdId = null;
+      let createdInvoiceData = null;
+      await runTransaction(req.db, async (tx) => {
+        // Use separate counters per businessMode to keep sequences independent
+        const modeKey = (businessMode || 'b2c').toLowerCase();
+        const counterId = `invoices_${modeKey}`;
+        const counterRef = doc(req.db, 'counters', counterId);
+        const counterSnap = await tx.get(counterRef);
+        let nextSeq = 1;
+        if (!counterSnap.exists()) {
+          tx.set(counterRef, { seq: 1 });
+          nextSeq = 1;
+        } else {
+          const current = counterSnap.data().seq || 0;
+          nextSeq = Number(current) + 1;
+          tx.update(counterRef, { seq: nextSeq });
+        }
 
-    // Emit socket event
-    req.io.emit('invoice.created', { id: invoiceRef.id, ...invoiceData });
+        const seqStr = String(nextSeq).padStart(4, '0');
+        const year = invoiceDate.getFullYear();
+        const month = String(invoiceDate.getMonth() + 1).padStart(2, '0');
+        const invoiceNumber = `INV-${year}${month}-${seqStr}`;
 
-    res.status(201).json({ id: invoiceRef.id, ...invoiceData });
+        // attach numbering to invoice data
+        const toSave = { ...invoiceData, invoiceNumber, number: invoiceNumber, sequence: nextSeq };
+
+        const invoiceRef = doc(collection(req.db, 'invoices'));
+        tx.set(invoiceRef, toSave);
+        createdId = invoiceRef.id;
+        createdInvoiceData = toSave;
+      });
+
+      // Emit socket event
+      req.io.emit('invoice.created', { id: createdId, ...createdInvoiceData });
+
+      res.status(201).json({ id: createdId, ...createdInvoiceData });
+    } catch (err) {
+      console.error('Invoice creation transaction failed:', err);
+      return res.status(500).json({ message: err.message });
+    }
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+});
+
+// Admin: Resequence existing invoices to ensure sequential numbering
+// Call with: POST /api/invoices/resequence?confirm=true
+router.post('/resequence', async (req, res) => {
+  if (req.query.confirm !== 'true') {
+    return res.status(400).json({ message: 'Confirmation required. Call with ?confirm=true' });
+  }
+
+    try {
+      const invoicesRef = collection(req.db, 'invoices');
+      const q = query(invoicesRef, orderBy('createdAt', 'asc'));
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) return res.json({ message: 'No invoices to resequence.' });
+
+      // Group documents by businessMode so we can resequence each mode independently
+      const groups = {};
+      for (const docSnap of snapshot.docs) {
+        const data = docSnap.data();
+        const mode = (data.businessMode || 'b2c').toLowerCase();
+        if (!groups[mode]) groups[mode] = [];
+        groups[mode].push({ id: docSnap.id, data });
+      }
+
+      let totalUpdated = 0;
+      const maxSeqPerMode = {};
+      // Process each group separately
+      for (const modeKey of Object.keys(groups)) {
+        const docs = groups[modeKey];
+        // docs are already in createdAt ascending order due to the outer query
+        let seq = 0;
+        const updates = [];
+        for (const item of docs) {
+          seq += 1;
+          const data = item.data;
+          const createdAtRaw = data.createdAt;
+          let createdAtDate = new Date();
+          if (createdAtRaw && typeof createdAtRaw.toDate === 'function') {
+            createdAtDate = createdAtRaw.toDate();
+          } else if (createdAtRaw) {
+            createdAtDate = new Date(createdAtRaw);
+          }
+          const year = createdAtDate.getFullYear();
+          const month = String(createdAtDate.getMonth() + 1).padStart(2, '0');
+          const seqStr = String(seq).padStart(4, '0');
+          const newNumber = `INV-${year}${month}-${seqStr}`;
+          updates.push({ id: item.id, invoiceNumber: newNumber, number: newNumber, sequence: seq });
+        }
+
+        // Apply updates sequentially for this group
+        for (const u of updates) {
+          const invoiceRef = doc(req.db, 'invoices', u.id);
+          await updateDoc(invoiceRef, { invoiceNumber: u.invoiceNumber, number: u.number, sequence: u.sequence, updatedAt: new Date() });
+          totalUpdated += 1;
+          maxSeqPerMode[modeKey] = u.sequence; // last assigned seq will be max for this mode
+        }
+      }
+
+      // Update counters per mode so new invoices continue from highest sequence
+      for (const [modeKey, maxSeq] of Object.entries(maxSeqPerMode)) {
+        const counterId = `invoices_${modeKey}`;
+        const counterRef = doc(req.db, 'counters', counterId);
+        await setDoc(counterRef, { seq: Number(maxSeq) }, { merge: true });
+      }
+
+      return res.json({ message: `Resequenced ${totalUpdated} invoices across ${Object.keys(groups).length} modes and updated counters.` });
+    } catch (err) {
+      console.error('Resequence error:', err);
+      return res.status(500).json({ message: err.message });
+    }
 });
 
 // Update invoice

@@ -112,6 +112,63 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
     return transporter?.vehicles || [];
   }, [watch, transporters]);
 
+  // Compute a numeric sequence for each invoice, prefer stored invoiceNumber when parseable.
+  // Assign sequences to unnumbered invoices based on createdAt order, then sort descending
+  const sortedInvoices = useMemo(() => {
+    if (!invoices || invoices.length === 0) return [];
+
+    const parseSeqFromNumber = (num) => {
+      if (!num) return null;
+      const parts = String(num).split('-');
+      const last = parts[parts.length - 1];
+      const parsed = parseInt(last, 10);
+      return isNaN(parsed) ? null : parsed;
+    };
+
+    const getTime = (inv) => {
+      const c = inv.date || inv.createdAt || null;
+      if (!c) return 0;
+      if (typeof c === 'number') return c;
+      if (typeof c === 'string') return new Date(c).getTime() || 0;
+      if (c.seconds) return c.seconds * 1000;
+      if (typeof c.toDate === 'function') return c.toDate().getTime();
+      if (typeof c.getTime === 'function') return c.getTime();
+      return 0;
+    };
+
+    // Map invoices with existing sequence when available
+    const mapped = invoices.map((inv) => {
+      const seq = parseSeqFromNumber(inv.invoiceNumber || inv.number);
+      return { inv, seq, time: getTime(inv) };
+    });
+
+    // Determine max existing sequence
+    const existingSeqs = mapped.map((m) => m.seq).filter((s) => s !== null);
+    let maxSeq = existingSeqs.length ? Math.max(...existingSeqs) : 0;
+
+    // For invoices without seq, assign based on createdAt descending (newest first)
+    const withoutSeq = mapped.filter((m) => m.seq === null).sort((a, b) => b.time - a.time);
+    for (const m of withoutSeq) {
+      maxSeq += 1;
+      m.seq = maxSeq;
+    }
+
+    // Build final array and sort descending by seq so newest/highest appears on top
+    const final = mapped
+      .map((m) => {
+        const createdDate = m.inv.date || m.inv.createdAt || new Date();
+        const cd = typeof createdDate === 'object' && typeof createdDate.toDate === 'function' ? createdDate.toDate() : new Date(createdDate);
+        const year = cd.getFullYear();
+        const month = String(cd.getMonth() + 1).padStart(2, '0');
+        const seqStr = String(m.seq).padStart(4, '0');
+        const computedNumber = `INV-${year}${month}-${seqStr}`;
+        return { ...m.inv, __seq: m.seq, displayNumber: m.inv.invoiceNumber || m.inv.number || computedNumber, __createdTime: m.time };
+      })
+      .sort((a, b) => b.__seq - a.__seq);
+
+    return final;
+  }, [invoices]);
+
   // Mutations
   const createMutation = useMutation(
     (payload) =>
@@ -397,7 +454,7 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
                     </tr>
                   </thead>
                   <tbody className={isDarkMode ? 'divide-y divide-gray-800/60' : 'divide-y divide-gray-200'}>
-                    {invoices.map((invoice) => {
+                    {sortedInvoices.map((invoice) => {
                       const invoiceComplete =
                         invoice.status?.toLowerCase() === 'paid' &&
                         (invoice.cargoStatus?.toLowerCase() === 'delivered' || businessMode === 'b2c') &&
@@ -423,7 +480,7 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
                                 </span>
                               )}
                               <div>
-                                <div>{invoice.invoiceNumber || invoice.number}</div>
+                                <div>{invoice.displayNumber || invoice.invoiceNumber || invoice.number}</div>
                                 <div className={`text-xs ${textSecondary}`}>{formatDate(invoice.date || invoice.createdAt)}</div>
                               </div>
                             </div>
