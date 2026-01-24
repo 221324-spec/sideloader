@@ -1,5 +1,5 @@
 const express = require('express');
-const { collection, doc, getDoc, setDoc, getDocs, query, where, orderBy, limit, updateDoc, deleteDoc, runTransaction } = require('firebase/firestore');
+const { collection, doc, getDoc, setDoc, getDocs, query, where, orderBy, limit, updateDoc, deleteDoc, runTransaction, writeBatch } = require('firebase/firestore');
 
 const router = express.Router();
 
@@ -875,22 +875,129 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const invoiceRef = doc(req.db, 'invoices', req.params.id);
-    const invoiceDoc = await getDoc(invoiceRef);
+    const invoiceSnap = await getDoc(invoiceRef);
 
-    if (!invoiceDoc.exists()) {
+    if (!invoiceSnap.exists()) {
       return res.status(404).json({ message: 'Invoice not found' });
     }
 
-    await deleteDoc(invoiceRef);
+    const invoiceData = invoiceSnap.data();
+    const storedMode = invoiceData.businessMode || 'b2c';
+    const modeKey = String(storedMode).toLowerCase();
+
+    // Determine deleted sequence number (fallback to parsing invoiceNumber)
+    let deletedSeq = invoiceData.sequence;
+    if (!deletedSeq && invoiceData.invoiceNumber) {
+      const parts = invoiceData.invoiceNumber.split('-');
+      const parsed = parseInt(parts[2], 10);
+      if (!isNaN(parsed)) deletedSeq = parsed;
+    }
+
+    // If we can't determine a sequence, just delete the doc and return
+    if (!deletedSeq) {
+      await deleteDoc(invoiceRef);
+      req.io.emit('invoice.deleted', { id: req.params.id });
+      return res.json({ message: 'Invoice deleted (no sequence present)' });
+    }
+
+    // Fetch all invoices in same stored mode (case-sensitive match on stored value) to include legacy casing
+    const invoicesRef = collection(req.db, 'invoices');
+    const q = query(invoicesRef, where('businessMode', '==', storedMode));
+    const snapshot = await getDocs(q);
+
+    // Build list of docs excluding the deleted one and sort by createdAt asc so sequences start from 1
+    const docsList = snapshot.docs
+      .map(d => ({ id: d.id, data: d.data() }))
+      .filter(d => d.id !== req.params.id)
+      .sort((a, b) => {
+        const aDate = a.data.createdAt && typeof a.data.createdAt.toDate === 'function' ? a.data.createdAt.toDate() : new Date(a.data.createdAt || 0);
+        const bDate = b.data.createdAt && typeof b.data.createdAt.toDate === 'function' ? b.data.createdAt.toDate() : new Date(b.data.createdAt || 0);
+        return aDate - bDate;
+      });
+
+    // Prepare a batch: delete target then resequence all remaining invoices so there are no gaps
+    const batch = writeBatch(req.db);
+    batch.delete(invoiceRef);
+
+    let seq = 0;
+    for (const item of docsList) {
+      seq += 1;
+      const d = item.data;
+
+      let createdAtDate = new Date();
+      if (d.createdAt && typeof d.createdAt.toDate === 'function') {
+        createdAtDate = d.createdAt.toDate();
+      } else if (d.createdAt) {
+        createdAtDate = new Date(d.createdAt);
+      }
+      const year = createdAtDate.getFullYear();
+      const month = String(createdAtDate.getMonth() + 1).padStart(2, '0');
+      const seqStr = String(seq).padStart(4, '0');
+      const newNumber = `INV-${year}${month}-${seqStr}`;
+
+      const docRef = doc(req.db, 'invoices', item.id);
+      // Normalize businessMode to lowercase to avoid future mismatches and resequence
+      batch.update(docRef, { sequence: seq, invoiceNumber: newNumber, number: newNumber, businessMode: modeKey, updatedAt: new Date() });
+    }
+
+    // Commit batch
+    await batch.commit();
+
+    // Update counter for this mode to reflect new highest sequence
+    const counterId = `invoices_${modeKey}`;
+    const counterRef = doc(req.db, 'counters', counterId);
+    const maxSeqAfter = seq;
+    await setDoc(counterRef, { seq: Number(maxSeqAfter) }, { merge: true });
 
     // Emit socket event
-    req.io.emit('invoice.deleted', { id: req.params.id });
+    req.io.emit('invoice.deleted', { id: req.params.id, resequenced: true, mode: modeKey, newMaxSeq: maxSeqAfter });
 
-    res.json({ message: 'Invoice deleted successfully' });
+    res.json({ message: 'Invoice deleted and fully resequenced', resequencedCount: seq, newMaxSeq: maxSeqAfter });
+  } catch (err) {
+    console.error('Error deleting invoice and compacting sequences:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Debug: report missing sequences per business mode (do not enable in production)
+router.get('/debug/missing-sequences', async (req, res) => {
+  try {
+    const invoicesRef = collection(req.db, 'invoices');
+    const snapshot = await getDocs(invoicesRef);
+    const modes = {};
+
+    snapshot.docs.forEach(d => {
+      const data = d.data();
+      const m = data.businessMode || 'b2c';
+      if (!modes[m]) modes[m] = [];
+      modes[m].push({ id: d.id, seq: data.sequence || 0, invoiceNumber: data.invoiceNumber || '', createdAt: data.createdAt || null });
+    });
+
+    const report = {};
+    for (const [m, arr] of Object.entries(modes)) {
+      arr.sort((a, b) => {
+        const aDate = a.createdAt && typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const bDate = b.createdAt && typeof b.createdAt.toDate === 'function' ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return aDate - bDate;
+      });
+      const seqs = arr.map(x => x.seq || 0).filter(s => s > 0);
+      const max = seqs.length ? Math.max(...seqs) : 0;
+      const missing = [];
+      for (let i = 1; i <= max; i++) if (!seqs.includes(i)) missing.push(i);
+      report[m] = {
+        count: arr.length,
+        maxSeq: max,
+        missing,
+        sample: arr.slice(0, 10)
+      };
+    }
+
+    res.json(report);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
 
 // Get invoice statistics
 router.get('/stats/summary', async (req, res) => {
