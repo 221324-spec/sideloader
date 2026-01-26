@@ -201,6 +201,38 @@ const InvoicePrintTemplate = ({ invoice, customer, onClose }) => {
                     )}
                   </tr>
                 ))}
+                {invoice.miscCharges && invoice.miscCharges.length > 0 && (
+                  <tr>
+                    <td className="border border-gray-400 px-2 py-1 text-black"></td>
+                    <td className="border border-gray-400 px-2 py-1 text-black font-semibold">Miscellaneous Charges</td>
+                    <td className="border border-gray-400 px-2 py-1 text-right text-black"></td>
+                    <td className="border border-gray-400 px-2 py-1 text-right text-black"></td>
+                    <td className="border border-gray-400 px-2 py-1 text-right text-black"></td>
+                    {invoice.businessMode === 'b2c' && <td className="border border-gray-400 px-2 py-1 text-right text-black"></td>}
+                  </tr>
+                )}
+                {(invoice.miscCharges || []).map((m, idx) => (
+                  <tr key={`misc-${idx}`} className="text-xs">
+                    {invoice.businessMode === 'b2c' ? (
+                      <>
+                        <td className="border border-gray-400 px-2 py-1 text-black"></td>
+                        <td className="border border-gray-400 px-2 py-1 text-black">{m.name || `Misc ${idx + 1}`}</td>
+                        <td className="border border-gray-400 px-2 py-1 text-right text-black"></td>
+                        <td className="border border-gray-400 px-2 py-1 text-right text-black"></td>
+                        <td className="border border-gray-400 px-2 py-1 text-right text-black">{formatCurrency(m.amount || 0)}</td>
+                        <td className="border border-gray-400 px-2 py-1 text-right text-black font-medium">{formatCurrency(m.amount || 0)}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="border border-gray-400 px-2 py-1 text-black"></td>
+                        <td className="border border-gray-400 px-2 py-1 text-black">{m.name || `Misc ${idx + 1}`}</td>
+                        <td className="border border-gray-400 px-2 py-1 text-right text-black"></td>
+                        <td className="border border-gray-400 px-2 py-1 text-right text-black"></td>
+                        <td className="border border-gray-400 px-2 py-1 text-right text-black font-medium">{formatCurrency(m.amount || 0)}</td>
+                      </>
+                    )}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -224,9 +256,20 @@ const InvoicePrintTemplate = ({ invoice, customer, onClose }) => {
                     <span className="text-black">{formatCurrency(invoice.vat_5_percent || invoice.taxAmount)}</span>
                   </div>
                 )}
+
+                {/* Misc charges breakdown (if present) and misc total */}
+                {invoice.miscCharges && invoice.miscCharges.length > 0 && (
+                  <div className="mt-1">
+                    <div className="flex justify-between border-t border-gray-300 pt-1">
+                      <span className="font-medium text-black">Misc Charges</span>
+                      <span className="font-medium text-black">{formatCurrency(invoice.miscTotal || invoice.misc_total || ((invoice.miscCharges || []).reduce((s,c)=>s+(Number(c.amount)||0),0)))}</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-between pt-1">
                   <span className="font-bold text-black text-base">Total:</span>
-                  <span className="font-bold text-black text-base">{formatCurrency(invoice.businessMode === 'b2b' ? (invoice.grand_total || invoice.billTotal) : invoice.billTotal)}</span>
+                  <span className="font-bold text-black text-base">{formatCurrency(invoice.grand_total || invoice.billTotal || 0)}</span>
                 </div>
               </div>
             </div>

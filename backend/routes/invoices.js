@@ -124,13 +124,15 @@ router.get('/', async (req, res) => {
         if (!invoiceData.billTotal || invoiceData.billTotal === 0 || invoiceData.vat_5_percent === undefined || invoiceData.grand_total === undefined) {
           if (invoiceData.items && Array.isArray(invoiceData.items)) {
             const { subtotal, taxAmount, billTotal, vat5, grandTotal } = calculateInvoiceTotals(invoiceData.items, invoiceData.taxRate || 0);
+            const miscTotal = Array.isArray(invoiceData.miscCharges) ? invoiceData.miscCharges.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0) : 0;
             invoiceData.subtotal = subtotal;
             invoiceData.taxAmount = taxAmount;
-            invoiceData.billTotal = billTotal;
             invoiceData.vat_5_percent = vat5;
-            invoiceData.grand_total = grandTotal;
+            invoiceData.billTotal = Math.round((billTotal + miscTotal) * 100) / 100;
+            invoiceData.grand_total = Math.round((grandTotal + miscTotal) * 100) / 100;
+            invoiceData.miscTotal = Math.round(miscTotal * 100) / 100;
             if (!invoiceData.totalInWords || !invoiceData.amount_in_words) {
-              const words = require('../utils/numberToWords').numberToWords(grandTotal);
+              const words = require('../utils/numberToWords').numberToWords(invoiceData.grand_total);
               invoiceData.totalInWords = invoiceData.totalInWords || words;
               invoiceData.amount_in_words = invoiceData.amount_in_words || words;
             }
@@ -244,13 +246,15 @@ router.get('/:id', async (req, res) => {
     if (!invoiceData.billTotal || invoiceData.billTotal === 0 || invoiceData.vat_5_percent === undefined || invoiceData.grand_total === undefined) {
       if (invoiceData.items && Array.isArray(invoiceData.items)) {
         const { subtotal, taxAmount, billTotal, vat5, grandTotal } = calculateInvoiceTotals(invoiceData.items, invoiceData.taxRate || 0);
+        const miscTotal = Array.isArray(invoiceData.miscCharges) ? invoiceData.miscCharges.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0) : 0;
         invoiceData.subtotal = subtotal;
         invoiceData.taxAmount = taxAmount;
-        invoiceData.billTotal = billTotal;
         invoiceData.vat_5_percent = vat5;
-        invoiceData.grand_total = grandTotal;
+        invoiceData.billTotal = Math.round((billTotal + miscTotal) * 100) / 100;
+        invoiceData.grand_total = Math.round((grandTotal + miscTotal) * 100) / 100;
+        invoiceData.miscTotal = Math.round(miscTotal * 100) / 100;
         if (!invoiceData.totalInWords || !invoiceData.amount_in_words) {
-          const words = require('../utils/numberToWords').numberToWords(grandTotal);
+          const words = require('../utils/numberToWords').numberToWords(invoiceData.grand_total);
           invoiceData.totalInWords = invoiceData.totalInWords || words;
           invoiceData.amount_in_words = invoiceData.amount_in_words || words;
         }
@@ -369,6 +373,7 @@ router.post('/', async (req, res) => {
     customerPONumber,
     paymentTerms,
     vatPercentage,
+    miscCharges = [],
     // New B2B schema fields
     customerName,
     customerTRN,
@@ -497,6 +502,9 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // Calculate misc charges total
+    const miscTotal = Array.isArray(miscCharges) ? miscCharges.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0) : 0;
+
     // Calculate totals
     let subtotal, taxAmount, billTotal, vat5, grandTotal;
     if (businessMode === 'b2c') {
@@ -504,14 +512,16 @@ router.post('/', async (req, res) => {
       taxAmount = invoiceItems.reduce((sum, item) => sum + item.vatAmount, 0);
       billTotal = invoiceItems.reduce((sum, item) => sum + item.billTotal, 0);
       vat5 = taxAmount;
+      // include misc charges in totals
+      billTotal = Math.round((billTotal + miscTotal) * 100) / 100;
       grandTotal = billTotal;
     } else {
       const totals = calculateInvoiceTotals(invoiceItems, taxRate);
       subtotal = totals.subtotal;
       taxAmount = totals.taxAmount;
-      billTotal = totals.billTotal;
+      billTotal = totals.billTotal + miscTotal;
       vat5 = totals.vat5;
-      grandTotal = totals.grandTotal;
+      grandTotal = totals.grandTotal + miscTotal;
     }
 
     const invoiceDate = date ? new Date(date) : new Date();
@@ -540,11 +550,13 @@ router.post('/', async (req, res) => {
         customerAddress: entity.address || ''
       }),
       items: invoiceItems,
+      miscCharges: Array.isArray(miscCharges) ? miscCharges : [],
+      miscTotal: Math.round((miscTotal || 0) * 100) / 100,
       subtotal: Math.round(subtotal * 100) / 100,
       vat_5_percent: Math.round(vat5 * 100) / 100,
       taxAmount: Math.round(taxAmount * 100) / 100,
       grand_total: Math.round(grandTotal * 100) / 100,
-      billTotal: Math.round(grandTotal * 100) / 100,
+      billTotal: Math.round(billTotal * 100) / 100,
       totalInWords: require('../utils/numberToWords').numberToWords(grandTotal),
       amount_in_words: require('../utils/numberToWords').numberToWords(grandTotal),
       origin: origin || '',
@@ -762,6 +774,10 @@ router.put('/:id', async (req, res) => {
         });
       }
 
+      // Calculate misc charges from request or keep existing
+      const newMiscCharges = req.body.miscCharges !== undefined ? req.body.miscCharges : (currentInvoice.miscCharges || []);
+      const miscTotal = Array.isArray(newMiscCharges) ? newMiscCharges.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0) : 0;
+
       // Calculate totals
       let subtotal, taxAmount, billTotal, vat5, grandTotal;
       if (currentInvoice.businessMode === 'b2c') {
@@ -769,25 +785,29 @@ router.put('/:id', async (req, res) => {
         taxAmount = invoiceItems.reduce((sum, item) => sum + item.vatAmount, 0);
         billTotal = invoiceItems.reduce((sum, item) => sum + item.billTotal, 0);
         vat5 = taxAmount;
+        // include misc charges
+        billTotal = billTotal + miscTotal;
         grandTotal = billTotal;
       } else {
         const currentTaxRate = req.body.taxRate !== undefined ? req.body.taxRate : (currentInvoice.taxRate || 0);
         const totals = calculateInvoiceTotals(invoiceItems, currentTaxRate);
         subtotal = totals.subtotal;
         taxAmount = totals.taxAmount;
-        billTotal = totals.billTotal;
+        billTotal = totals.billTotal + miscTotal;
         vat5 = totals.vat5;
-        grandTotal = totals.grandTotal;
+        grandTotal = totals.grandTotal + miscTotal;
       }
 
       updateData = {
         ...updateData,
         items: invoiceItems,
+        miscCharges: Array.isArray(newMiscCharges) ? newMiscCharges : [],
+        miscTotal: Math.round(miscTotal * 100) / 100,
         subtotal: Math.round(subtotal * 100) / 100,
         vat_5_percent: Math.round(vat5 * 100) / 100,
         taxAmount: Math.round(taxAmount * 100) / 100,
         grand_total: Math.round(grandTotal * 100) / 100,
-        billTotal: Math.round(grandTotal * 100) / 100,
+        billTotal: Math.round(billTotal * 100) / 100,
         totalInWords: require('../utils/numberToWords').numberToWords(grandTotal),
         amount_in_words: require('../utils/numberToWords').numberToWords(grandTotal)
       };

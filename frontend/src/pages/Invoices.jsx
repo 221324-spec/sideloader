@@ -89,7 +89,8 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
       origin: '',
       destination: '',
       notes: '',
-      items: [emptyItem]
+      items: [emptyItem],
+      miscCharges: []
     }
   });
 
@@ -266,7 +267,8 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
       origin: formData.origin?.trim(),
       destination: formData.destination?.trim(),
       notes: formData.notes?.trim(),
-      items
+      items,
+      miscCharges: (formData.miscCharges || []).map(c => ({ name: c.name || '', amount: Number(c.amount) || 0 }))
     };
   };
 
@@ -311,6 +313,8 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
               amount: i.amount ?? Math.round((i.quantity || 0) * (i.rate || 0) * 100) / 100
             }))
           : [emptyItem]
+      ,
+      miscCharges: invoice.miscCharges && invoice.miscCharges.length ? invoice.miscCharges.map(c => ({ name: c.name || '', amount: c.amount || 0 })) : []
     });
   };
 
@@ -619,7 +623,7 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
                 <h3 className="text-xl font-bold">{editingInvoice ? 'Edit Invoice' : 'Create Invoice'}</h3>
                 <button
                   onClick={() => {
-                    setShowCreateForm(false);
+                    setShowCreateForm(false);  
                     setEditingInvoice(null);
                     resetB2BForm();
                     setFormError('');
@@ -630,7 +634,6 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
                 </button>
               </div>
             </div>
-
             {businessMode === 'b2c' ? (
               <B2CInvoiceForm
                 customers={customers || []}
@@ -784,123 +787,124 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
                       Add Item
                     </button>
                   </div>
+
                   <div className="space-y-4">
                     {(watch('items') || []).map((item, index) => {
                       const qty = Number(item.quantity) || 0;
                       const rate = Number(item.rate) || 0;
                       const amount = Math.round(qty * rate * 100) / 100;
                       return (
-                        <div key={index} className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-                          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                            <div>
-                              <label className="block text-xs font-medium mb-1">Work Date</label>
-                              <input
-                                {...register(`items.${index}.workDate`)}
-                                type="date"
-                                className={`w-full px-2 py-1 text-sm rounded border ${
-                                  isDarkMode ? 'bg-gray-900 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'
-                                }`}
-                              />
-                            </div>
-                            <div className="md:col-span-2">
-                              <label className="block text-xs font-medium mb-1">Description</label>
-                              <input
-                                {...register(`items.${index}.description`)}
-                                type="text"
-                                className={`w-full px-2 py-1 text-sm rounded border ${
-                                  isDarkMode ? 'bg-gray-900 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'
-                                }`}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium mb-1">Quantity</label>
-                              <input
-                                {...register(`items.${index}.quantity`, { valueAsNumber: true })}
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                onChange={(e) => {
-                                  const newQty = Number(e.target.value) || 0;
-                                  const newRate = Number(watch(`items.${index}.rate`)) || 0;
-                                  setValue(`items.${index}.quantity`, newQty);
-                                  setValue(`items.${index}.amount`, Math.round(newQty * newRate * 100) / 100);
-                                }}
-                                className={`w-full px-2 py-1 text-sm rounded border ${
-                                  isDarkMode ? 'bg-gray-900 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'
-                                }`}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium mb-1">Rate</label>
-                              <input
-                                {...register(`items.${index}.rate`, { valueAsNumber: true })}
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                onChange={(e) => {
-                                  const newRate = Number(e.target.value) || 0;
-                                  const newQty = Number(watch(`items.${index}.quantity`)) || 0;
-                                  setValue(`items.${index}.rate`, newRate);
-                                  setValue(`items.${index}.amount`, Math.round(newQty * newRate * 100) / 100);
-                                }}
-                                className={`w-full px-2 py-1 text-sm rounded border ${
-                                  isDarkMode ? 'bg-gray-900 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'
-                                }`}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium mb-1">Amount</label>
-                              <input
-                                {...register(`items.${index}.amount`, { valueAsNumber: true })}
-                                value={amount}
-                                readOnly
-                                className={`w-full px-2 py-1 text-sm rounded border ${
-                                  isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-gray-100 border-gray-200 text-gray-700'
-                                }`}
-                              />
-                            </div>
+                        <div key={index} className="grid grid-cols-12 gap-4 items-end">
+                          <div className="col-span-2">
+                            <label className="block text-xs font-medium mb-1">Date</label>
+                            <input {...register(`items.${index}.workDate`)} type="date" className={`w-full px-2 py-1 text-sm rounded border ${isDarkMode ? 'bg-gray-900 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`} />
                           </div>
-                          {(watch('items') || []).length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const items = watch('items') || [];
-                                setValue(
-                                  'items',
-                                  items.filter((_, i) => i !== index)
-                                );
+                          <div className="col-span-6">
+                            <label className="block text-xs font-medium mb-1">Description</label>
+                            <input {...register(`items.${index}.description`)} className={`w-full px-2 py-1 text-sm rounded border ${isDarkMode ? 'bg-gray-900 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`} />
+                          </div>
+                          <div className="col-span-1">
+                            <label className="block text-xs font-medium mb-1">Qty</label>
+                            <input
+                              {...register(`items.${index}.quantity`, { valueAsNumber: true })}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              onChange={(e) => {
+                                const newQty = Number(e.target.value) || 0;
+                                const newRate = Number(watch(`items.${index}.rate`)) || 0;
+                                setValue(`items.${index}.quantity`, newQty);
+                                setValue(`items.${index}.amount`, Math.round(newQty * newRate * 100) / 100);
                               }}
-                              className="mt-3 w-full py-2 rounded-lg text-sm font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
-                            >
-                              Remove Item
-                            </button>
-                          )}
+                              className={`w-full px-2 py-1 text-sm rounded border ${isDarkMode ? 'bg-gray-900 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`}
+                            />
+                          </div>
+                          <div className="col-span-1">
+                            <label className="block text-xs font-medium mb-1">Rate</label>
+                            <input
+                              {...register(`items.${index}.rate`, { valueAsNumber: true })}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              onChange={(e) => {
+                                const newRate = Number(e.target.value) || 0;
+                                const newQty = Number(watch(`items.${index}.quantity`)) || 0;
+                                setValue(`items.${index}.rate`, newRate);
+                                setValue(`items.${index}.amount`, Math.round(newQty * newRate * 100) / 100);
+                              }}
+                              className={`w-full px-2 py-1 text-sm rounded border ${isDarkMode ? 'bg-gray-900 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`}
+                            />
+                          </div>
+                          <div className="col-span-1">
+                            <label className="block text-xs font-medium mb-1">Amount</label>
+                            <input
+                              {...register(`items.${index}.amount`, { valueAsNumber: true })}
+                              value={amount}
+                              readOnly
+                              className={`w-full px-2 py-1 text-sm rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-gray-100 border-gray-200 text-gray-700'}`}
+                            />
+                          </div>
+                          <div className="col-span-1">
+                            {(watch('items') || []).length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const items = watch('items') || [];
+                                  setValue('items', items.filter((_, i) => i !== index));
+                                }}
+                                className="mt-1 w-full py-2 rounded-lg text-sm font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
                   </div>
-                </div>
 
-                {/* Totals */}
-                <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-                  <div className="flex flex-col items-end space-y-2">
-                    <div className="flex justify-between w-full md:w-1/2">
-                      <span className="text-sm font-medium">Subtotal</span>
-                      <span className="text-sm font-semibold">
-                        {formatCurrency((watch('items') || []).reduce((sum, itm) => sum + (Number(itm.amount) || 0), 0))}
-                      </span>
+                  {/* Misc Charges */}
+                  <div className="mt-4">
+                    <label className="text-sm font-medium">Miscellaneous Charges</label>
+                    <div className="space-y-2 mt-2">
+                      {(watch('miscCharges') || []).map((c, i) => (
+                        <div key={i} className="grid grid-cols-3 gap-2 items-center">
+                          <input {...register(`miscCharges.${i}.name`)} placeholder="Name" className={`px-2 py-1 rounded border ${isDarkMode ? 'bg-gray-900 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`} />
+                          <input type="number" step="0.01" {...register(`miscCharges.${i}.amount`, { valueAsNumber: true })} placeholder="Amount" className={`px-2 py-1 rounded border ${isDarkMode ? 'bg-gray-900 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`} />
+                          <button type="button" onClick={() => setValue('miscCharges', (watch('miscCharges')||[]).filter((_, idx) => idx !== i))} className="px-2 py-1 rounded bg-red-50 text-red-600">Remove</button>
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => setValue('miscCharges', [...(watch('miscCharges')||[]), { name: '', amount: 0 }])} className="mt-2 px-3 py-2 rounded bg-indigo-600 text-white">+ Add Charge</button>
                     </div>
-                    <div className="flex justify-between w-full md:w-1/2">
-                      <span className="text-sm font-medium">VAT (5%)</span>
-                      <span className="text-sm font-semibold">
-                        {formatCurrency(((watch('items') || []).reduce((sum, itm) => sum + (Number(itm.amount) || 0), 0) * 0.05))}
-                      </span>
-                    </div>
-                    <div className="flex justify-between w-full md:w-1/2">
-                      <span className="text-base font-bold">Grand Total</span>
-                      <span className="text-base font-bold">
-                        {formatCurrency(((watch('items') || []).reduce((sum, itm) => sum + (Number(itm.amount) || 0), 0) * 1.05))}
-                      </span>
+                  </div>
+
+                  {/* Totals */}
+                  <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className="flex flex-col items-end space-y-2">
+                      <div className="flex justify-between w-full md:w-1/2">
+                        <span className="text-sm font-medium">Subtotal</span>
+                        <span className="text-sm font-semibold">
+                          {formatCurrency((watch('items') || []).reduce((sum, itm) => sum + (Number(itm.amount) || 0), 0))}
+                        </span>
+                      </div>
+                      <div className="flex justify-between w-full md:w-1/2">
+                        <span className="text-sm font-medium">VAT (5%)</span>
+                        <span className="text-sm font-semibold">
+                          {formatCurrency(((watch('items') || []).reduce((sum, itm) => sum + (Number(itm.amount) || 0), 0) * 0.05))}
+                        </span>
+                      </div>
+                      <div className="flex justify-between w-full md:w-1/2">
+                        <span className="text-sm font-medium">Misc Charges</span>
+                        <span className="text-sm font-semibold">
+                          {formatCurrency((watch('miscCharges') || []).reduce((s, c) => s + (Number(c.amount) || 0), 0))}
+                        </span>
+                      </div>
+                      <div className="flex justify-between w-full md:w-1/2">
+                        <span className="text-base font-bold">Grand Total</span>
+                        <span className="text-base font-bold">
+                          {formatCurrency(((watch('items') || []).reduce((sum, itm) => sum + (Number(itm.amount) || 0), 0) * 1.05) + (watch('miscCharges') || []).reduce((s, c) => s + (Number(c.amount) || 0), 0))}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1008,6 +1012,24 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
                             <td className={`px-4 py-2 text-right ${textPrimary}`}>{formatCurrency(item.amount || item.billTotal)}</td>
                         </tr>
                       ))}
+                      {invoiceDetail.miscCharges && invoiceDetail.miscCharges.length > 0 && (
+                        <tr className="text-sm">
+                          <td className={`px-4 py-2 ${textPrimary}`}></td>
+                          <td className={`px-4 py-2 ${textPrimary} font-semibold`}>Miscellaneous Charges</td>
+                          <td className={`px-4 py-2 text-right ${textPrimary}`}></td>
+                          <td className={`px-4 py-2 text-right ${textPrimary}`}></td>
+                          <td className={`px-4 py-2 text-right ${textPrimary}`}></td>
+                        </tr>
+                      )}
+                      {(invoiceDetail.miscCharges || []).map((m, idx) => (
+                        <tr key={`misc-${idx}`} className="text-sm">
+                          <td className={`px-4 py-2 ${textPrimary}`}></td>
+                          <td className={`px-4 py-2 ${textPrimary}`}>{m.name || `Misc ${idx + 1}`}</td>
+                          <td className={`px-4 py-2 text-right ${textPrimary}`}></td>
+                          <td className={`px-4 py-2 text-right ${textPrimary}`}></td>
+                          <td className={`px-4 py-2 text-right ${textPrimary}`}>{formatCurrency(m.amount || 0)}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -1023,6 +1045,14 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
                     <span>VAT (5%)</span>
                     <span>{formatCurrency(invoiceDetail.vat_5_percent || invoiceDetail.taxAmount || 0)}</span>
                   </div>
+                  {invoiceDetail.miscCharges && invoiceDetail.miscCharges.length > 0 && (
+                    <div className="w-full">
+                      <div className="flex justify-between w-full text-sm mt-1">
+                        <span className="font-medium">Misc Charges</span>
+                        <span className="font-medium">{formatCurrency(invoiceDetail.miscTotal || invoiceDetail.misc_total || ((invoiceDetail.miscCharges || []).reduce((s,c)=>s+(Number(c.amount)||0),0)))}</span>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex justify-between w-full text-base font-bold">
                     <span>Total</span>
                     <span>{formatCurrency(invoiceDetail.grand_total || invoiceDetail.billTotal || 0)}</span>

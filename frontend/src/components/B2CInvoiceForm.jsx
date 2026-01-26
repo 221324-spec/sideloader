@@ -18,29 +18,35 @@ function B2CInvoiceForm({ customers = [], onSubmit, onCancel, initialData }) {
       paymentTerms: 'cash',
       vatPercentage: 5,
       dueDate: '',
-      items: [defaultLine()]
+      items: [defaultLine()],
+      miscCharges: []
     }
   });
 
   const { register, handleSubmit, control, watch, setValue, formState: { errors, isSubmitting } } = form;
   const { fields, append, remove } = useFieldArray({ control, name: 'items' });
+  const { fields: miscFields, append: appendMisc, remove: removeMisc } = useFieldArray({ control, name: 'miscCharges' });
 
-  const totals = useMemo(() => {
-    const items = watch('items') || [];
-    const vatPercentage = parseFloat(watch('vatPercentage')) || 5;
-    const subtotal = items.reduce((sum, item) => {
-      const qty = parseFloat(item.quantity) || 0;
-      const rate = parseFloat(item.rate) || 0;
-      return sum + (qty * rate);
-    }, 0);
-    const vatAmount = (subtotal * vatPercentage) / 100;
-    return {
-      subtotal,
-      vatPercentage,
-      vatAmount,
-      total: subtotal + vatAmount
-    };
-  }, [watch]);
+  // Compute totals from watched form values so UI updates in real time
+  const watchedItems = watch('items') || [];
+  const watchedMisc = watch('miscCharges') || [];
+  const watchedVat = watch('vatPercentage');
+
+  const subtotal = (watchedItems || []).reduce((sum, item) => {
+    const qty = parseFloat(item?.quantity) || 0;
+    const rate = parseFloat(item?.rate) || 0;
+    return sum + qty * rate;
+  }, 0);
+  const vatPercentage = parseFloat(watchedVat) || 5;
+  const vatAmount = (subtotal * vatPercentage) / 100;
+  const misc = (watchedMisc || []).reduce((s, c) => s + (parseFloat(c?.amount) || 0), 0);
+  const totals = {
+    subtotal,
+    vatPercentage,
+    vatAmount,
+    misc,
+    total: subtotal + vatAmount + misc
+  };
 
   const submit = (data) => {
     // Find selected customer
@@ -59,6 +65,8 @@ function B2CInvoiceForm({ customers = [], onSubmit, onCancel, initialData }) {
         quantity: parseFloat(item.quantity) || 0,
         rate: parseFloat(item.rate) || 0
       }))
+      ,
+      miscCharges: (data.miscCharges || []).map(c => ({ name: c.name || '', amount: parseFloat(c.amount) || 0 }))
     };
     onSubmit(payload);
   };
@@ -111,6 +119,37 @@ function B2CInvoiceForm({ customers = [], onSubmit, onCancel, initialData }) {
                 className={`w-full px-3 py-2 border rounded-lg ${borderColor} ${formBg}`}
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Miscellaneous Charges</label>
+            <div className={`border rounded-lg overflow-hidden ${borderColor}`}>
+              <table className="w-full text-sm">
+                <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
+                  <tr>
+                    <th className="px-4 py-3 text-left">Name</th>
+                    <th className="px-4 py-3 text-right">Amount (AED)</th>
+                    <th className="px-4 py-3 text-center">Remove</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {miscFields.map((field, index) => (
+                    <tr key={field.id} className={isDarkMode ? 'border-b border-gray-600' : 'border-b border-gray-200'}>
+                      <td className="px-4 py-3">
+                        <input {...register(`miscCharges.${index}.name`)} className={`w-full px-2 py-1 border rounded ${borderColor} ${formBg}`} />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <input type="number" step="0.01" min="0" {...register(`miscCharges.${index}.amount`, { valueAsNumber: true })} className={`w-28 px-2 py-1 border rounded ${borderColor} ${formBg}`} />
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button type="button" onClick={() => removeMisc(index)} className="text-red-500">✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <button type="button" onClick={() => appendMisc({ name: '', amount: 0 })} className="mt-3 px-4 py-2 rounded bg-indigo-600 text-white">+ Add Charge</button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -216,6 +255,10 @@ function B2CInvoiceForm({ customers = [], onSubmit, onCancel, initialData }) {
               <div className="flex justify-between">
                 <span>VAT ({totals.vatPercentage}%):</span>
                 <span>AED {totals.vatAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Misc Charges:</span>
+                <span>AED {Number(totals.misc || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-semibold text-base pt-2 border-t border-dashed">
                 <span>Total:</span>
