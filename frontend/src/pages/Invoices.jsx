@@ -969,7 +969,7 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
                 <p className={`text-sm ${textSecondary}`}>
                   Mobile: 971-52-7766638, +971 50 282 5301
                 </p>
-                <p className={`text-sm ${textSecondary}`}>Email: sas@gmail.com</p>
+                <p className={`text-sm ${textSecondary}`}>Email: Sideloaderuae@gmail.com</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
