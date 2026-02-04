@@ -119,7 +119,7 @@ function StaffDashboard({ businessMode, sidebarCollapsed = false }) {
 
   return (
     <div className="w-full max-w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-6">
-      {/* Header */}}
+      {/* Header */}
       <div className="mb-8">
         <h2 className={`text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
           Staff Dashboard
