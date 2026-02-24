@@ -54,11 +54,11 @@ function B2CInvoiceForm({ customers = [], onSubmit, onCancel, initialData }) {
     const payload = {
       ...data,
       businessMode: 'b2c',
-      customerName: selectedCustomer?.name || '',
-      customerAddress: selectedCustomer?.address || '',
-      customerTRN: selectedCustomer?.trn || '',
-      customerPhone: selectedCustomer?.phone || '',
-      customerEmail: selectedCustomer?.email || '',
+      customerName: selectedCustomer?.name || initialData?.customerName || '',
+      customerAddress: selectedCustomer?.address || initialData?.customerAddress || '',
+      customerTRN: selectedCustomer?.trn || initialData?.customerTRN || '',
+      customerPhone: selectedCustomer?.phone || initialData?.customerPhone || '',
+      customerEmail: selectedCustomer?.email || initialData?.customerEmail || '',
       items: data.items.map(item => ({
         workDate: item.workDate,
         description: item.description,

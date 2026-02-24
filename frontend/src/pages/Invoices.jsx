@@ -191,9 +191,15 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
         body: JSON.stringify(payload)
       }),
     {
-      onSuccess: (_, variables) => {
+      onSuccess: (updatedInvoice, variables) => {
         queryClient.invalidateQueries(['invoices', businessMode]);
         queryClient.invalidateQueries(['invoice', variables.id]);
+        // Update the query data directly for immediate UI update
+        queryClient.setQueryData(['invoice', variables.id], updatedInvoice);
+        // Update selectedInvoice if it's the one being edited
+        if (selectedInvoice?.id === variables.id) {
+          setSelectedInvoice(updatedInvoice);
+        }
       }
     }
   );
@@ -346,10 +352,15 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
     if (!editingInvoice) return;
     setFormError('');
     try {
+      let result;
       if (businessMode === 'b2c') {
-        await updateMutation.mutateAsync({ id: editingInvoice.id, payload: { ...formData, businessMode: 'b2c' } });
+        result = await updateMutation.mutateAsync({ id: editingInvoice.id, payload: { ...formData, businessMode: 'b2c' } });
       } else {
-        await updateMutation.mutateAsync({ id: editingInvoice.id, payload: buildB2BPayload(formData) });
+        result = await updateMutation.mutateAsync({ id: editingInvoice.id, payload: buildB2BPayload(formData) });
+      }
+      // Immediately update selectedInvoice with the fresh response from PUT
+      if (result && result.id) {
+        setSelectedInvoice(result);
       }
       resetB2BForm();
       setEditingInvoice(null);
@@ -375,8 +386,20 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
     if (selectedInvoice?.id === id) setSelectedInvoice(null);
   };
 
-  // Always prefer fullInvoiceQuery.data for latest info
-  const invoiceDetail = fullInvoiceQuery.data && Object.keys(fullInvoiceQuery.data).length > 0 ? fullInvoiceQuery.data : selectedInvoice;
+  // Merge both data sources so the freshest data always wins.
+  // fullInvoiceQuery.data comes from GET (authoritative after refetch),
+  // selectedInvoice is set immediately from PUT response after edits.
+  const invoiceDetail = (() => {
+    const fetched = fullInvoiceQuery.data && Object.keys(fullInvoiceQuery.data).length > 0 ? fullInvoiceQuery.data : null;
+    const selected = selectedInvoice || null;
+    if (!fetched && !selected) return null;
+    if (!fetched) return selected;
+    if (!selected) return fetched;
+    // Both exist — pick whichever has the newer updatedAt, or merge them
+    const fetchedTime = fetched.updatedAt?.seconds ? fetched.updatedAt.seconds : (typeof fetched.updatedAt === 'string' ? new Date(fetched.updatedAt).getTime() / 1000 : 0);
+    const selectedTime = selected.updatedAt?.seconds ? selected.updatedAt.seconds : (typeof selected.updatedAt === 'string' ? new Date(selected.updatedAt).getTime() / 1000 : 0);
+    return selectedTime >= fetchedTime ? { ...fetched, ...selected } : { ...selected, ...fetched };
+  })();
   const invoicesEmpty = !invoicesLoading && invoices.length === 0;
 
   // Auto-print when enabled
@@ -980,12 +1003,21 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
                   <p className="text-sm">Due: {formatDate(invoiceDetail.dueDate)}</p>
                   {invoiceDetail.do_no && <p className="text-sm">DO: {invoiceDetail.do_no}</p>}
                   {invoiceDetail.job_no && <p className="text-sm">Job: {invoiceDetail.job_no}</p>}
+                  {(invoiceDetail.customerTRN || invoiceDetail.customer?.trn) && (
+                    <p className="text-sm"><span className="font-medium">Cust. TRN:</span> <span className="font-bold">{invoiceDetail.customerTRN || invoiceDetail.customer?.trn}</span></p>
+                  )}
+                  {invoiceDetail.customerPONumber && <p className="text-sm">PO Number: {invoiceDetail.customerPONumber}</p>}
                 </div>
                 <div>
                   <h4 className="text-lg font-semibold mb-2">Customer</h4>
                   <p className="text-sm">Name: {invoiceDetail.customerName || invoiceDetail.customer?.name || 'N/A'}</p>
-                  <p className="text-sm"><span className="font-medium">TRN:</span> <span className="font-bold">{invoiceDetail.customerTRN !== undefined ? invoiceDetail.customerTRN : (invoiceDetail.customer?.trn !== undefined ? invoiceDetail.customer?.trn : '')}</span></p>
                   <p className="text-sm">Address: {invoiceDetail.customerAddress || invoiceDetail.customer?.address?.replace(/TRN\s*NUMBER\s*\d+/i, '').replace(/TRN\s*:?\s*\d+/i, '').replace(/TRN\s*:?\s*[A-Z0-9]+/i, '').replace(/\s+\.+\s*$/, '').trim() || 'N/A'}</p>
+                  {(invoiceDetail.customerPhone || invoiceDetail.customer?.phone) && (
+                    <p className="text-sm">Phone: {invoiceDetail.customerPhone || invoiceDetail.customer?.phone}</p>
+                  )}
+                  {(invoiceDetail.customerEmail || invoiceDetail.customer?.email) && (
+                    <p className="text-sm">Email: {invoiceDetail.customerEmail || invoiceDetail.customer?.email}</p>
+                  )}
                 </div>
               </div>
 
@@ -1042,8 +1074,8 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
                     <span>{formatCurrency(invoiceDetail.subtotal || 0)}</span>
                   </div>
                   <div className="flex justify-between w-full text-sm">
-                    <span>VAT (5%)</span>
-                    <span>{formatCurrency(invoiceDetail.vat_5_percent || invoiceDetail.taxAmount || 0)}</span>
+                    <span>VAT ({invoiceDetail.vatPercentage || 5}%)</span>
+                    <span>{formatCurrency(invoiceDetail.taxAmount || invoiceDetail.vat_5_percent || 0)}</span>
                   </div>
                   {invoiceDetail.miscCharges && invoiceDetail.miscCharges.length > 0 && (
                     <div className="w-full">
@@ -1060,6 +1092,26 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
                 </div>
               </div>
 
+              {(invoiceDetail.amount_in_words || invoiceDetail.totalInWords) && (
+                <div>
+                  <p className="text-sm"><span className="font-medium">Amount in Words:</span> {invoiceDetail.amount_in_words || invoiceDetail.totalInWords}</p>
+                </div>
+              )}
+
+              {(invoiceDetail.paymentTerms || invoiceDetail.payment_terms) && (
+                <div>
+                  <h4 className="text-lg font-semibold mb-2">Payment Terms</h4>
+                  <p className="text-sm">
+                    {invoiceDetail.businessMode === 'b2b'
+                      ? (invoiceDetail.payment_terms || '')
+                      : (invoiceDetail.paymentTerms === 'cash' ? 'Cash' :
+                         invoiceDetail.paymentTerms === 'credit' ? 'Credit' :
+                         invoiceDetail.paymentTerms === 'bank_transfer' ? 'Bank Transfer' :
+                         invoiceDetail.paymentTerms || '')}
+                  </p>
+                </div>
+              )}
+
               {invoiceDetail.notes && (
                 <div>
                   <h4 className="text-lg font-semibold mb-2">Notes</h4>
@@ -1072,10 +1124,20 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
       )}
 
       {/* Print Template */}
-      {isPrinting && selectedInvoice && (
+      {isPrinting && invoiceDetail && (
         <InvoicePrintTemplate
-          invoice={selectedInvoice}
-          customer={selectedInvoice.customer}
+          invoice={invoiceDetail}
+          customer={
+            invoiceDetail.businessMode === 'b2c'
+              ? {
+                  name: invoiceDetail.customerName || invoiceDetail.customer?.name || '',
+                  address: invoiceDetail.customerAddress || invoiceDetail.customer?.address || '',
+                  trn: invoiceDetail.customerTRN || invoiceDetail.customer?.trn || '',
+                  phone: invoiceDetail.customerPhone || invoiceDetail.customer?.phone || '',
+                  email: invoiceDetail.customerEmail || invoiceDetail.customer?.email || ''
+                }
+              : invoiceDetail.customer || {}
+          }
           onClose={() => {
             setIsPrinting(false);
             setSelectedInvoice(null);

@@ -213,7 +213,20 @@ router.get('/', async (req, res) => {
 
         if (topLevelVehicle) invoiceData.vehicle = topLevelVehicle;
         if (transporterData) invoiceData.transporter = transporterData;
-        if (customerData) invoiceData.customer = customerData;
+        if (customerData) {
+          invoiceData.customer = customerData;
+          // Invoice's own top-level fields are authoritative (edited via PUT)
+          // Override customer object so frontend always sees latest saved data
+          if (invoiceData.customerName) invoiceData.customer.name = invoiceData.customerName;
+          if (invoiceData.customerTRN) invoiceData.customer.trn = invoiceData.customerTRN;
+          if (invoiceData.customerAddress) invoiceData.customer.address = invoiceData.customerAddress;
+          if (invoiceData.customerPhone) invoiceData.customer.phone = invoiceData.customerPhone;
+          if (invoiceData.customerEmail) invoiceData.customer.email = invoiceData.customerEmail;
+        }
+        // Ensure top-level fields are always populated (fallback to customer doc)
+        invoiceData.customerName = invoiceData.customerName || invoiceData.customer?.name || '';
+        invoiceData.customerTRN = invoiceData.customerTRN || invoiceData.customer?.trn || '';
+        invoiceData.customerAddress = invoiceData.customerAddress || invoiceData.customer?.address || '';
         if (itemsWithVehicles.length) invoiceData.items = itemsWithVehicles;
 
         // Filter by businessMode in memory if specified
@@ -326,7 +339,7 @@ router.get('/:id', async (req, res) => {
       }
     }
 
-    // Populate customer data for B2C invoices and ensure TRN, date, dueDate are present
+    // Populate customer data and ensure invoice's own fields take priority
     if (invoiceData.customerId) {
       try {
         const customerRef = doc(req.db, 'customers', invoiceData.customerId);
@@ -334,21 +347,21 @@ router.get('/:id', async (req, res) => {
         if (customerDoc.exists()) {
           const customerData = customerDoc.data();
           invoiceData.customer = { id: customerDoc.id, ...customerData };
-          // Ensure TRN, date, dueDate are present in top-level invoiceData for frontend
-          invoiceData.customerTRN = customerData.trn || '';
-          invoiceData.customerName = customerData.name || '';
-          invoiceData.customerAddress = customerData.address || '';
+          // Invoice's own top-level fields are authoritative (edited via PUT)
+          if (invoiceData.customerName) invoiceData.customer.name = invoiceData.customerName;
+          if (invoiceData.customerTRN) invoiceData.customer.trn = invoiceData.customerTRN;
+          if (invoiceData.customerAddress) invoiceData.customer.address = invoiceData.customerAddress;
+          if (invoiceData.customerPhone) invoiceData.customer.phone = invoiceData.customerPhone;
+          if (invoiceData.customerEmail) invoiceData.customer.email = invoiceData.customerEmail;
         }
       } catch (customerErr) {
         console.error('Error fetching customer:', customerErr);
       }
     }
-    // For B2B, ensure customerTRN, customerName, customerAddress are present
-    if (invoiceData.businessMode === 'b2b') {
-      invoiceData.customerTRN = invoiceData.customerTRN || invoiceData.customer?.trn || '';
-      invoiceData.customerName = invoiceData.customerName || invoiceData.customer?.name || '';
-      invoiceData.customerAddress = invoiceData.customerAddress || invoiceData.customer?.address || '';
-    }
+    // Always ensure top-level fields are populated (fallback to customer doc)
+    invoiceData.customerTRN = invoiceData.customerTRN || invoiceData.customer?.trn || '';
+    invoiceData.customerName = invoiceData.customerName || invoiceData.customer?.name || '';
+    invoiceData.customerAddress = invoiceData.customerAddress || invoiceData.customer?.address || '';
 
     res.json(invoiceData);
   } catch (err) {
@@ -816,6 +829,17 @@ router.put('/:id', async (req, res) => {
     if (origin !== undefined) updateData.origin = origin;
     if (destination !== undefined) updateData.destination = destination;
 
+    // Update customer fields for both B2B and B2C
+    if (req.body.customerId !== undefined) updateData.customerId = req.body.customerId;
+    if (req.body.customerName !== undefined) updateData.customerName = req.body.customerName;
+    if (req.body.customerTRN !== undefined) updateData.customerTRN = req.body.customerTRN;
+    if (req.body.customerAddress !== undefined) updateData.customerAddress = req.body.customerAddress;
+    if (req.body.customerPhone !== undefined) updateData.customerPhone = req.body.customerPhone;
+    if (req.body.customerEmail !== undefined) updateData.customerEmail = req.body.customerEmail;
+    if (req.body.customerPONumber !== undefined) updateData.customerPONumber = req.body.customerPONumber;
+    if (req.body.paymentTerms !== undefined) updateData.paymentTerms = req.body.paymentTerms;
+    if (req.body.vatPercentage !== undefined) updateData.vatPercentage = req.body.vatPercentage;
+
     // Update new B2B header fields when provided
     if (currentInvoice.businessMode === 'b2b') {
       if (req.body.customerName !== undefined || req.body.customerTRN !== undefined || req.body.customerAddress !== undefined) {
@@ -839,7 +863,31 @@ router.put('/:id', async (req, res) => {
     if (transporterPaymentStatus !== undefined) updateData.transporterPaymentStatus = transporterPaymentStatus;
 
     await updateDoc(invoiceRef, updateData);
-
+    
+    // If this invoice is linked to a customer (B2C) and customer fields were provided,
+    // propagate updates to the customer document so future GETs reflect edited values.
+    if (currentInvoice.customerId) {
+      try {
+        const custUpdates = {};
+        if (req.body.customerName !== undefined) custUpdates.name = req.body.customerName;
+        if (req.body.customerTRN !== undefined) custUpdates.trn = req.body.customerTRN;
+        if (req.body.customerAddress !== undefined) custUpdates.address = req.body.customerAddress;
+        if (req.body.customerPhone !== undefined) custUpdates.phone = req.body.customerPhone;
+        if (req.body.customerEmail !== undefined) custUpdates.email = req.body.customerEmail;
+        // Only write if there's something to update
+        if (Object.keys(custUpdates).length > 0) {
+          const customerRef = doc(req.db, 'customers', currentInvoice.customerId);
+          try {
+            await updateDoc(customerRef, custUpdates);
+            console.log(`Customer ${currentInvoice.customerId} updated from invoice ${req.params.id}`);
+          } catch (custErr) {
+            console.error('Error updating linked customer from invoice update:', custErr);
+          }
+        }
+      } catch (errCust) {
+        console.error('Error preparing customer update:', errCust);
+      }
+    }
     // Auto-sync: If all invoice statuses are complete, mark contract as complete
     if (cargoStatus === 'delivered' || transporterPaymentStatus === 'paid' || status === 'paid') {
       const mergedInvoice = { ...currentInvoice, ...updateData };
@@ -885,7 +933,18 @@ router.put('/:id', async (req, res) => {
     // Emit socket event
     req.io.emit('invoice.updated', { id: req.params.id, ...updateData });
 
-    res.json({ id: req.params.id, ...currentInvoice, ...updateData });
+    // Build final response with consistent customer object
+    const finalInvoice = { id: req.params.id, ...currentInvoice, ...updateData };
+    // Ensure customer object reflects the latest top-level fields
+    finalInvoice.customer = {
+      ...(finalInvoice.customer || {}),
+      name: finalInvoice.customerName || finalInvoice.customer?.name || '',
+      trn: finalInvoice.customerTRN || finalInvoice.customer?.trn || '',
+      address: finalInvoice.customerAddress || finalInvoice.customer?.address || '',
+      phone: finalInvoice.customerPhone || finalInvoice.customer?.phone || '',
+      email: finalInvoice.customerEmail || finalInvoice.customer?.email || ''
+    };
+    res.json(finalInvoice);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
