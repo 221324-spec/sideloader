@@ -984,7 +984,7 @@ function Invoices({ businessMode, sidebarCollapsed = false }) {
             <div className="p-6 space-y-6">
               <div className="text-center space-y-1">
                 <h2 className="text-2xl font-bold">INVOICE</h2>
-                <h3 className="text-lg font-semibold">SIDELOADER TRANSPORTS L.L.C</h3>
+                <h3 className="text-lg font-semibold">TAX SIDELOADER TRANSPORTS L.L.C</h3>
                 <p className="font-medium">Invoice #{invoiceDetail.invoiceNumber || invoiceDetail.number}</p>
                 <p className={`text-sm ${textSecondary}`}>
                   License No: 1314615 | Tax Registration: 104382934800003

@@ -96,7 +96,7 @@ const InvoicePrintTemplate = ({ invoice, customer, onClose }) => {
           {/* Company Header */}
           <div className="text-center mb-3 space-y-1 print-keep-together">
             <h1 className="text-2xl font-bold text-black">INVOICE</h1>
-            <h2 className="text-lg font-semibold text-black">SIDELOADER TRANSPORTS L.L.C</h2>
+            <h2 className="text-lg font-semibold text-black">TAX SIDELOADER TRANSPORTS L.L.C</h2>
             <p className="text-sm font-medium text-black">Invoice #{invoice.invoiceNumber || invoice.number}</p>
             <p className="text-xs text-black">License No: 1314615 | Tax Registration: 104382934800003</p>
             <p className="text-xs text-black">Mobile: 971-52-7766638, +971 50 282 5301</p>
