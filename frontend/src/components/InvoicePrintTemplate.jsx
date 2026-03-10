@@ -95,8 +95,7 @@ const InvoicePrintTemplate = ({ invoice, customer, onClose }) => {
         <div className="p-6 print:p-4 bg-white text-black print-keep-together" id="invoice-content" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
           {/* Company Header */}
           <div className="text-center mb-3 space-y-1 print-keep-together">
-            <p className="text-sm font-semibold text-black">TAX INVOICE</p>
-            <h1 className="text-2xl font-bold text-black">INVOICE</h1>
+            <h1 className="text-2xl font-bold text-black">TAX INVOICE</h1>
             <h2 className="text-lg font-semibold text-black">SIDELOADER TRANSPORTS L.L.C</h2>
             <p className="text-sm font-medium text-black">Invoice #{invoice.invoiceNumber || invoice.number}</p>
             <p className="text-xs text-black">License No: 1314615 | Tax Registration: 104382934800003</p>
